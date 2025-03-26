@@ -102,8 +102,8 @@ min() {
 
 # Main Loop over years and months and days inputed by the user
 #
-for yyyy in $(seq $YYYY_INIT $YYYY_END); do
-  for mm in $(seq $MM_INIT $MM_END); do
+for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
+  for mm in $(seq -w $MM_INIT $MM_END); do
     # Define the maximum number of days for each month
     if [ "$mm" == "02" ]; then
       max=29
@@ -133,7 +133,7 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
 
           exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
-            exec_command "rm ${file}"
+            exec_command "rm -f ${file} &"
           fi
         else
           message "File ${file} does not exist, skipping ..."
@@ -146,7 +146,7 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
           filename=$(basename "$file")
           exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
-            rm "$file"
+            exec_command "rm -f ${file} &"
           fi
         else
           message "File ${file} does not exist, skipping ..."
@@ -159,7 +159,7 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
           filename=$(basename "$file")
           exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
-            rm "$file"
+            exec_command "rm -f ${file} &"
           fi
         else
           message "File ${file} does not exist, skipping ..."
