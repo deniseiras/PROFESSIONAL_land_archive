@@ -1,24 +1,8 @@
-#!/bin/bash
-
-#BSUB -n 72
-#BSUB -R "span[ptile=72]" 
-#BSUB -q p_short
-#BSUB -W 1:00
-#BSUB -P R000
-#BSUB -x 
-#BSUB -J arch_outrest
-#BSUB -o log/arch_output78.out.%J
-#BSUB -e log/arch_output78.out.%J
-#BSUB -app spreads_filter
-#BSUB -I
-
 # Instructions
 # - run with DRY run first, without submitting, to check the commands
 # - Then, you can either:
 #   - submit the $ARCHIVE_EXEC_FILE
 #   - or, submit this script with DRY_RUN=false to execute the commands
-
-
 
 # Paramters
 #
@@ -40,15 +24,7 @@ RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the corre
 ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive_scripts/archive_test/$EXP_NAME"
 
 
-# script start ===========================================================================
-#
-
-mkdir -p $ARCHIVE_DIR
-HOUR_NOW=$(date +"%Y-%m-%d_%H%M%S")
-DATE_INI_END=${YYYY_INIT}${MM_INIT}${DD_INIT}-${YYYY_END}${MM_END}${DD_END}
-ARCHIVE_EXEC_FILE="./archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.sh"
-ARCHIVE_LOG_FILE="./archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.log"
-
+# Functions =================================================================================
 
 # function for executing commands
 # - when using dry run, the commands are not executed, only printed to the execution file
@@ -69,14 +45,49 @@ exec_command() {
 # - otherwise messages are printed to the log file
 message() {
   MESSAGE=$1
+  WOUT_TIME=$2
 
-  MSG_TIME="# $(date +"%Y-%m-%d %H:%M:%S") - $MESSAGE"
+  if [[ "$WOUT_TIME" == "true" ]]; then
+    MSG_TIME="$MESSAGE"
+  else
+    MSG_TIME="# $(date +"%Y-%m-%d %H:%M:%S") - $MESSAGE"
+  fi
+
   if [[ "$DRY_RUN" == "false" ]]; then
     echo $MSG_TIME >> $ARCHIVE_LOG_FILE
   else
     echo $MSG_TIME >> $ARCHIVE_EXEC_FILE
   fi
 }
+
+
+# script start ===========================================================================
+#
+
+mkdir -p $ARCHIVE_DIR "./log"
+HOUR_NOW=$(date +"%Y-%m-%d_%H%M%S")
+DATE_INI_END=${YYYY_INIT}${MM_INIT}${DD_INIT}-${YYYY_END}${MM_END}${DD_END}
+ARCHIVE_EXEC_FILE="./log/archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.sh"
+ARCHIVE_LOG_FILE="./log/archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.log"
+
+if [ $DRY_RUN == "true" ]; then
+  echo "<<< DRY RUN MODE >>>"
+  echo "Execution file: $ARCHIVE_EXEC_FILE being generated for posterior submission" 
+
+  message "#!/bin/bash" "true"
+  message "#BSUB -n 1" "true"
+  message "#BSUB -q p_short" "true"
+  message "#BSUB -W 1:00" "true"
+  message "#BSUB -P 0575" "true"
+  message "#BSUB -J archive" "true"
+  message "#BSUB -o log/arch_exec.%J" "true"
+  message "#BSUB -e log/arch_exec.%J" "true"
+  message "#BSUB -R \"rusage[mem=10G]\"" "true"
+  message "#BSUB -app spreads_filter" "true"
+  
+else
+  echo "Executing and generating log file ${ARCHIVE_LOG_FILE}"
+fi
 
 
 # function that returns the minimum of two numbers
@@ -106,6 +117,8 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
     for dd in $(seq -w "$DD_INIT" "$(min "$max" "$DD_END")"); do
       # Specify the target date (e.g., 2000-03-15)
       TARGET_DATE="${yyyy}-${mm}-${dd}"
+      message "================================================================================================================================================="
+      message "Starting archiving for date ${TARGET_DATE}"
 
       # Create subdirectories for organized archiving within ARCHIVE_DIR
       OUTPUT_DIR="$ARCHIVE_DIR/output_history_$TARGET_DATE"
@@ -131,11 +144,12 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_analysis_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_sd_*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          message "Compressing $filename with netcdf4 format..."
           exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
             rm "$file"
           fi
+        else
+          message "File ${file} does not exist, skipping ..."
         fi
       done
 
@@ -143,11 +157,12 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_preassim_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_sd_*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          message "Compressing ${filename} with netcdf4 format..."
           exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
             rm "$file"
           fi
+        else
+          message "File ${file} does not exist, skipping ..."
         fi
       done
 
@@ -164,7 +179,9 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
           if [ -e "$file" ]; then
             filename=$(basename "$file")
             exec_command "gzip $file"
-            exec_command "mv ${RUN_DIR}/${filename.gz} ${RESTART_DIR}/"
+            exec_command "mv ${RUN_DIR}/${filename}.gz ${RESTART_DIR}/"
+          else
+            message "File ${file} does not exist, skipping ..."
           fi
         done
       fi
@@ -177,6 +194,8 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
           filename=$(basename "$file")
           exec_command "gzip ${file}"
           exec_command "mv ${RUN_DIR}/${filename%.nc}.gz ${INFLATION_DIR}/"
+        else
+          message "File ${file} does not exist, skipping ..."
         fi
       done
 
@@ -191,6 +210,8 @@ done  # yyyy
 # # Remove unwanted clm_output_mean and clm_output_sd files for the given date in RUN_DIR
 # rm -f "$RUN_DIR"/"$EXP_NAME"*clm_output_mean*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*clm_output_sd*."$TARGET_DATE"-00000.nc
 
-message_exec_command "Archiving and cleanup completed for dates between days ${DD_INIT} and ${DD_END}, month ${MM_INIT} and ${MM_END} of year between ${YYYY_INIT} and ${YYYY_END}"
+message "================================================================================================================================================="
+message "Archiving and cleanup completed for dates between days ${DD_INIT} and ${DD_END}, month ${MM_INIT} and ${MM_END} of year between ${YYYY_INIT} and ${YYYY_END}"
+message "================================================================================================================================================="
 
 # script end ===========================================================================
