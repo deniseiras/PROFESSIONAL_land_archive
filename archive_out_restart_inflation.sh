@@ -40,34 +40,46 @@ RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the corre
 ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive_scripts/archive_test/$EXP_NAME"
 
 
-# script start
+# script start ===========================================================================
 #
 
 mkdir -p $ARCHIVE_DIR
-ARCHIVE_EXEC_FILE="./archive_execution_${EXP_NAME}_${YYYY_INIT}_${YYYY_END}_${MM_INIT}_${MM_END}.sh"
-ARCHIVE_LOG_FILE="./archive_execution_${EXP_NAME}_${YYYY_INIT}_${YYYY_END}_${MM_INIT}_${MM_END}.log"
+HOUR_NOW=$(date +"%Y-%m-%d_%H%M%S")
+DATE_INI_END=${YYYY_INIT}${MM_INIT}${DD_INIT}-${YYYY_END}${MM_END}${DD_END}
+ARCHIVE_EXEC_FILE="./archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.sh"
+ARCHIVE_LOG_FILE="./archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.log"
 
-# function print messages and execute commands
-# when using dry run, the commands are not executed, only printed to the execution file
-message_exec_command() {
-  MESSAGE=$1
-  COMMAND=$2
 
-  MSG_TIME="# $(date +"%Y-%m-%d %H:%M:%S") - $MESSAGE"
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo "# $MSG_TIME" >> $ARCHIVE_EXEC_FILE
-    if [[ ! -z "$COMMAND" ]]; then
-      echo "$COMMAND" >> $ARCHIVE_EXEC_FILE
-    fi  
+# function for executing commands
+# - when using dry run, the commands are not executed, only printed to the execution file
+# - when not using dry run, the commands are executed
+exec_command() {
+  COMMAND=$1
+
+  if [[ "$DRY_RUN" == "false" ]]; then
+    eval "$COMMAND" >> $ARCHIVE_LOG_FILE
   else
-    echo "$MSG_TIME"
-    if [[ ! -z "$COMMAND" ]]; then
-      eval "$COMMAND" >> $ARCHIVE_LOG_FILE
-    fi    
+    echo "$COMMAND" >> $ARCHIVE_EXEC_FILE
   fi
 }
 
 
+# Function for printing messages
+# - when using dry run, messages are comented in exec file
+# - otherwise messages are printed to the log file
+message() {
+  MESSAGE=$1
+
+  MSG_TIME="# $(date +"%Y-%m-%d %H:%M:%S") - $MESSAGE"
+  if [[ "$DRY_RUN" == "false" ]]; then
+    echo $MSG_TIME >> $ARCHIVE_LOG_FILE
+  else
+    echo $MSG_TIME >> $ARCHIVE_EXEC_FILE
+  fi
+}
+
+
+# function that returns the minimum of two numbers
 min() {
   if [[ $1 -le $2 ]]; then
     echo $1
@@ -78,6 +90,7 @@ min() {
 
 
 # Main Loop over years and months and days inputed by the user
+#
 for yyyy in $(seq $YYYY_INIT $YYYY_END); do
   for mm in $(seq $MM_INIT $MM_END); do
     # Define the maximum number of days for each month
@@ -100,70 +113,74 @@ for yyyy in $(seq $YYYY_INIT $YYYY_END); do
       INFLATION_DIR="$ARCHIVE_DIR/inflation_$TARGET_DATE"
       mkdir -p "$OUTPUT_DIR" "$RESTART_DIR" "$INFLATION_DIR"
 
-      # Compress and move output/history files for the specified date from RUN_DIR to ARCHIVE_DIR
+      message "Compressing OUTPUT/HISTORY files with netcdf4 format..."
       for file in "$RUN_DIR"/"$EXP_NAME"*.h[0-9]*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
 
-          MESSAGE='Compressing "$filename" with netcdf4 format...'
-          COMMAND='nccopy -k 4 -d 1 "$file" "$OUTPUT_DIR/${filename%.nc}_nc4.nc"'
-          exec_command "$MESSAGE" "$COMMAND"
+          exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
-            exec_command 'Removing "$file" ...' 'rm "$file"'
+            exec_command "rm ${file}"
           fi
         else
-          exec_command "File $file does not exist, skipping ..."
+          message "File ${file} does not exist, skipping ..."
         fi
       done
 
-      # for file in "$RUN_DIR"/clm_analysis_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_sd_*."$TARGET_DATE"-00000.nc; do
-      #   if [ -e "$file" ]; then
-      #     filename=$(basename "$file")
-      #     echo "Compressing $filename with netcdf4 format..."
-      #     nccopy -k 4 -d 1 "$file" "$OUTPUT_DIR/${filename%.nc}_nc4.nc"
-      #     rm "$file"
-      #   fi
-      # done
+      message "Compressing CLM_ANALYSIS files with netcdf4 format..."
+      for file in "$RUN_DIR"/clm_analysis_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_sd_*."$TARGET_DATE"-00000.nc; do
+        if [ -e "$file" ]; then
+          filename=$(basename "$file")
+          message "Compressing $filename with netcdf4 format..."
+          exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          if [[ "$REMOVE_FILES" == "true" ]]; then
+            rm "$file"
+          fi
+        fi
+      done
 
-      # for file in "$RUN_DIR"/clm_preassim_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_sd_*."$TARGET_DATE"-00000.nc; do
-      #   if [ -e "$file" ]; then
-      #     filename=$(basename "$file")
-      #     echo "Compressing $filename with netcdf4 format..."
-      #     nccopy -k 4 -d 1 "$file" "$OUTPUT_DIR/${filename%.nc}_nc4.nc"
-      #     rm "$file"
-      #   fi
-      # done
+      message "Compressing CLM_PREASSIM_MEMBER files with netcdf4 format..."
+      for file in "$RUN_DIR"/clm_preassim_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_sd_*."$TARGET_DATE"-00000.nc; do
+        if [ -e "$file" ]; then
+          filename=$(basename "$file")
+          message "Compressing ${filename} with netcdf4 format..."
+          exec_command "nccopy -k 4 -d 1 ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          if [[ "$REMOVE_FILES" == "true" ]]; then
+            rm "$file"
+          fi
+        fi
+      done
 
-      # # Only archive restart if the date is the 1st or 15th of the month
-      # DAY_OF_MONTH=$(date -d "$TARGET_DATE" +%d)
-      # if [[ "$DAY_OF_MONTH" == "01" || "$DAY_OF_MONTH" == "15" ]]; then
-      #   # Create directories for restart and inflation files only if archiving
-      #   RESTART_DIR="$ARCHIVE_DIR/restart_$TARGET_DATE"
-      #   INFLATION_DIR="$ARCHIVE_DIR/inflation_$TARGET_DATE"
-      #   mkdir -p "$RESTART_DIR" "$INFLATION_DIR"
+      message "Compressing RESTART files with gzip format"
+      # Only archive restart if the date is the 1st or 15th of the month
+      DAY_OF_MONTH=$(date -d "$TARGET_DATE" +%d)
+      if [[ "$DAY_OF_MONTH" == "01" || "$DAY_OF_MONTH" == "15" ]]; then
+        # Create directories for restart and inflation files only if archiving
+        RESTART_DIR="$ARCHIVE_DIR/restart_$TARGET_DATE"
+        mkdir -p "$RESTART_DIR"
 
-      #   # Archive and move all restart files for the given date from RUN_DIR to ARCHIVE_DIR
-      #   for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*.rh*."$TARGET_DATE"-00000.nc; do
-      #     if [ -e "$file" ]; then
-      #       filename=$(basename "$file")
-      #       echo "Compressing $filename with gzip..."
-      #       gzip "$file"
-      #       mv "$RUN_DIR/$filename.gz" "$RESTART_DIR/"
-      #     fi
-      #   done
-      # fi
-      # # Compress and move only clm_output inflation files for the specified date from RUN_DIR to ARCHIVE_DIR
-      # for file in "$RUN_DIR"/clm_output_priorinf*."$TARGET_DATE"-00000.nc; do
-      #   if [ -e "$file" ]; then
-      #     filename=$(basename "$file")
-      #     echo "Compressing $filename with gzip..."
-      #     gzip "$file"
-      #     mv "$RUN_DIR/$filename.gz" "$INFLATION_DIR/"
-      #   fi
-      # done
+        # Archive and move all restart files for the given date from RUN_DIR to ARCHIVE_DIR
+        for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*.rh*."$TARGET_DATE"-00000.nc; do
+          if [ -e "$file" ]; then
+            filename=$(basename "$file")
+            exec_command "gzip $file"
+            exec_command "mv ${RUN_DIR}/${filename.gz} ${RESTART_DIR}/"
+          fi
+        done
+      fi
 
-      echo "Archiving completed for date $TARGET_DATE"
-      date
+      message "Compressing INFLATION files with gzip..."
+      INFLATION_DIR="$ARCHIVE_DIR/inflation_$TARGET_DATE"
+      mkdir -p "$INFLATION_DIR"
+      for file in "$RUN_DIR"/clm_output_priorinf*."$TARGET_DATE"-00000.nc; do
+        if [ -e "$file" ]; then
+          filename=$(basename "$file")
+          exec_command "gzip ${file}"
+          exec_command "mv ${RUN_DIR}/${filename%.nc}.gz ${INFLATION_DIR}/"
+        fi
+      done
+
+      message "Archiving completed for date ${TARGET_DATE}"
 
     done # dd
   done # mm
@@ -171,10 +188,9 @@ done  # yyyy
 
 
 # TODO check for that
-
 # # Remove unwanted clm_output_mean and clm_output_sd files for the given date in RUN_DIR
 # rm -f "$RUN_DIR"/"$EXP_NAME"*clm_output_mean*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*clm_output_sd*."$TARGET_DATE"-00000.nc
 
-message_exec_command 'Archiving and cleanup completed for dates between month "${MM_INIT}" and "${MM_END}" of year between "${YYYY_INIT}" and "${YYYY_END}"'
+message_exec_command "Archiving and cleanup completed for dates between days ${DD_INIT} and ${DD_END}, month ${MM_INIT} and ${MM_END} of year between ${YYYY_INIT} and ${YYYY_END}"
 
-
+# script end ===========================================================================
