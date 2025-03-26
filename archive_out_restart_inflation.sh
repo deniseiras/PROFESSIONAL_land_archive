@@ -64,10 +64,10 @@ message() {
 # script start ===========================================================================
 #
 
-mkdir -p $ARCHIVE_DIR "./log"
+mkdir -p $ARCHIVE_DIR "./log" "./exec"
 HOUR_NOW=$(date +"%Y-%m-%d_%H%M%S")
 DATE_INI_END=${YYYY_INIT}${MM_INIT}${DD_INIT}-${YYYY_END}${MM_END}${DD_END}
-ARCHIVE_EXEC_FILE="./log/archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.sh"
+ARCHIVE_EXEC_FILE="./exec/archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.sh"
 ARCHIVE_LOG_FILE="./log/archive_execution__${EXP_NAME}_${DATE_INI_END}__at_${HOUR_NOW}.log"
 
 if [ $DRY_RUN == "true" ]; then
@@ -76,12 +76,12 @@ if [ $DRY_RUN == "true" ]; then
 
   message "#!/bin/bash" "true"
   message "#BSUB -n 1" "true"
-  message "#BSUB -q p_short" "true"
-  message "#BSUB -W 1:00" "true"
+  message "#BSUB -q s_long" "true"
+  message "#BSUB -W 24:00" "true"
   message "#BSUB -P 0575" "true"
-  message "#BSUB -J archive" "true"
-  message "#BSUB -o log/arch_exec.%J" "true"
-  message "#BSUB -e log/arch_exec.%J" "true"
+  message "#BSUB -J archive_land" "true"
+  message "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
+  message "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
   message "#BSUB -R \"rusage[mem=10G]\"" "true"
   message "#BSUB -app spreads_filter" "true"
   
@@ -89,6 +89,7 @@ else
   echo "Executing and generating log file ${ARCHIVE_LOG_FILE}"
 fi
 
+exit 0
 
 # function that returns the minimum of two numbers
 min() {
@@ -166,10 +167,10 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
         fi
       done
 
-      message "Compressing RESTART files with gzip format"
       # Only archive restart if the date is the 1st or 15th of the month
       DAY_OF_MONTH=$(date -d "$TARGET_DATE" +%d)
       if [[ "$DAY_OF_MONTH" == "01" || "$DAY_OF_MONTH" == "15" ]]; then
+        message "Compressing RESTART files with gzip format"
         # Create directories for restart and inflation files only if archiving
         RESTART_DIR="$ARCHIVE_DIR/restart_$TARGET_DATE"
         mkdir -p "$RESTART_DIR"
@@ -193,7 +194,7 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
           exec_command "gzip ${file}"
-          exec_command "mv ${RUN_DIR}/${filename%.nc}.gz ${INFLATION_DIR}/"
+          exec_command "mv ${RUN_DIR}/${filename}.gz ${INFLATION_DIR}/"
         else
           message "File ${file} does not exist, skipping ..."
         fi
