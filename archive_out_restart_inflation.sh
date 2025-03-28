@@ -93,11 +93,7 @@ fi
 
 # function that returns the minimum of two numbers
 min() {
-  if [[ $1 -le $2 ]]; then
-    echo $1
-  else
-    echo $2
-  fi
+  echo $(( $1 < $2 ? $1 : $2 ))
 }
 
 
@@ -106,8 +102,12 @@ min() {
 for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
   for mm in $(seq -w $MM_INIT $MM_END); do
     # Define the maximum number of days for each month
-    if [ "$mm" == "02" ]; then
-      max=29
+    if [[ "$mm" == "02" ]]; then
+      if (( yyyy % 4 == 0 && (yyyy % 100 != 0 || yyyy % 400 == 0) )); then
+        max=29  # Leap year
+      else
+        max=28
+      fi
     elif [ "$mm" == "04" ] || [ "$mm" == "06" ] || [ "$mm" == "09" ] || [ "$mm" == "11" ]; then
       max=30
     else
