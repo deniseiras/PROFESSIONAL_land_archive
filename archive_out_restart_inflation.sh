@@ -49,13 +49,13 @@ message() {
   WOUT_TIME=$2
 
   if [[ "$WOUT_TIME" == "true" ]]; then
-    MSG_TIME="$MESSAGE"
+    MSG_TIME="echo ${MESSAGE}"
   else
-    MSG_TIME="# $(date +"%Y-%m-%d %H:%M:%S") - $MESSAGE"
+    MSG_TIME="echo $(date +"%Y-%m-%d %H:%M:%S") - ${MESSAGE}"
   fi
 
   if [[ "$DRY_RUN" == "false" ]]; then
-    echo $MSG_TIME >> $ARCHIVE_LOG_FILE
+    eval $MSG_TIME >> $ARCHIVE_LOG_FILE
   else
     echo $MSG_TIME >> $ARCHIVE_EXEC_FILE
   fi
@@ -83,7 +83,7 @@ if [ $DRY_RUN == "true" ]; then
   message "#BSUB -J archive_land" "true"
   message "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
   message "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
-  message "#BSUB -R \"rusage[mem=10G]\"" "true"
+  message "#BSUB -R \"rusage[mem=500M]\"" "true"
   message "#BSUB -app spreads_filter" "true"
   
 else
