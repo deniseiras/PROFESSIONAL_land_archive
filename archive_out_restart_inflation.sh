@@ -21,7 +21,7 @@ DD_END=$9       # eg 31
 # run directory where the data is located
 RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the correct path
 # archive directory where the files are stored
-ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive_scripts/archive_test/$EXP_NAME"
+ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$EXP_NAME"
 # nccopy command for generating netcdf4 files. Uses medium compression level (5) for balance between speed, compression and acess time
 NCCOPY_CMD="nccopy -k 4 -d 5"
 
@@ -75,16 +75,16 @@ if [ $DRY_RUN == "true" ]; then
   echo "<<< DRY RUN MODE >>>"
   echo "Execution file: $ARCHIVE_EXEC_FILE being generated for posterior submission" 
 
-  message "#!/bin/bash" "true"
-  message "#BSUB -n 1" "true"
-  message "#BSUB -q s_long" "true"
-  message "#BSUB -W 24:00" "true"
-  message "#BSUB -P 0575" "true"
-  message "#BSUB -J archive_land" "true"
-  message "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
-  message "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
-  message "#BSUB -R \"rusage[mem=500M]\"" "true"
-  message "#BSUB -app spreads_filter" "true"
+  exec_command "#!/bin/bash" "true"
+  exec_command "#BSUB -n 1" "true"
+  exec_command "#BSUB -q s_long" "true"
+  exec_command "#BSUB -W 24:00" "true"
+  exec_command "#BSUB -P 0575" "true"
+  exec_command "#BSUB -J archive_land" "true"
+  exec_command "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
+  exec_command "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
+  exec_command "#BSUB -R \"rusage[mem=500M]\"" "true"
+  exec_command "#BSUB -app spreads_filter" "true"
   
 else
   echo "Executing and generating log file ${ARCHIVE_LOG_FILE}"
