@@ -18,10 +18,18 @@ DD_END=$9       # eg 31
 
 # Change ONCE !
 #
+
+# JUNO
+# # run directory where the data is located
+# RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the correct path
+# # archive directory where the files are stored
+# ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$EXP_NAME"
+
+# ATOS
 # run directory where the data is located
-RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the correct path
+RUN_DIR="/lus/h1resw02/project/ita5542/work/exps/$EXP_NAME/run"  # Update with the correct path
 # archive directory where the files are stored
-ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$EXP_NAME"
+ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$EXP_NAME"
 # nccopy command for generating netcdf4 files. Uses medium compression level (5) for balance between speed, compression and acess time
 NCCOPY_CMD="nccopy -k 4 -d 5"
 
@@ -75,17 +83,31 @@ if [ $DRY_RUN == "true" ]; then
   echo "<<< DRY RUN MODE >>>"
   echo "Execution file: $ARCHIVE_EXEC_FILE being generated for posterior submission" 
 
+  # JUNO
+  # exec_command "#!/bin/bash" "true"
+  # exec_command "#BSUB -n 1" "true"
+  # exec_command "#BSUB -q s_long" "true"
+  # exec_command "#BSUB -W 24:00" "true"
+  # exec_command "#BSUB -P 0575" "true"
+  # exec_command "#BSUB -J archive_land" "true"
+  # exec_command "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
+  # exec_command "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
+  # exec_command "#BSUB -R \"rusage[mem=500M]\"" "true"
+  # exec_command "#BSUB -app spreads_filter" "true"
+
+  # ATOS
   exec_command "#!/bin/bash" "true"
-  exec_command "#BSUB -n 1" "true"
-  exec_command "#BSUB -q s_long" "true"
-  exec_command "#BSUB -W 24:00" "true"
-  exec_command "#BSUB -P 0575" "true"
-  exec_command "#BSUB -J archive_land" "true"
-  exec_command "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
-  exec_command "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
-  exec_command "#BSUB -R \"rusage[mem=500M]\"" "true"
-  exec_command "#BSUB -app spreads_filter" "true"
-  
+  exec_command "#SBATCH --ntasks=1" "true"
+  exec_command "#SBATCH --time=24:00:00" "true"
+  exec_command "#SBATCH --job-name=archive_land" "true"
+  exec_command "#SBATCH --output=../${ARCHIVE_LOG_FILE}" "true"
+  exec_command "#SBATCH --error=../${ARCHIVE_LOG_FILE}" "true"
+  exec_command "#SBATCH --mem=500M" "true"
+
+  exec_command "export RUN_DIR='${RUN_DIR}'" "true"
+  exec_command "export ARCHIVE_DIR='${ARCHIVE_DIR}'" "true"
+  exec_command "export NCCOPY_CMD='${NCCOPY_CMD}'" "true"
+
 else
   echo "Executing and generating log file ${ARCHIVE_LOG_FILE}"
 fi
@@ -127,14 +149,20 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
       INFLATION_DIR="$ARCHIVE_DIR/inflation_$TARGET_DATE"
       mkdir -p "$OUTPUT_DIR" "$RESTART_DIR" "$INFLATION_DIR"
 
+      exec_command "export OUTPUT_DIR='${OUTPUT_DIR}'" "true"
+      exec_command "export RESTART_DIR='${RESTART_DIR}'" "true"
+      exec_command "export INFLATION_DIR='${INFLATION_DIR}'" "true"
+
+
       message "Compressing OUTPUT/HISTORY files with netcdf4 format..."
       for file in "$RUN_DIR"/"$EXP_NAME"*.h[0-9]*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
 
-          exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          # exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          exec_command "\${NCCOPY_CMD} \${RUN_DIR}/${filename} \${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
-            exec_command "rm -f ${file} &"
+            exec_command "rm -f \${RUN_DIR}/${filename} &"
           fi
         else
           message "File ${file} does not exist, skipping ..."
@@ -145,7 +173,8 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_analysis_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_analysis_sd_*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          exec_command "\${NCCOPY_CMD} \${RUN_DIR}/${filename} \${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          # exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
             exec_command "rm -f ${file} &"
           fi
@@ -158,7 +187,8 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_preassim_member_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_mean_*."$TARGET_DATE"-00000.nc "$RUN_DIR"/clm_preassim_sd_*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          exec_command "\${NCCOPY_CMD} \${RUN_DIR}/${filename} \${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
+          # exec_command "${NCCOPY_CMD} ${file} ${OUTPUT_DIR}/${filename%.nc}_nc4.nc"
           if [[ "$REMOVE_FILES" == "true" ]]; then
             exec_command "rm -f ${file} &"
           fi
@@ -179,8 +209,10 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
         for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*.rh*."$TARGET_DATE"-00000.nc; do
           if [ -e "$file" ]; then
             filename=$(basename "$file")
-            exec_command "gzip $file"
-            exec_command "mv ${RUN_DIR}/${filename}.gz ${RESTART_DIR}/"
+            # exec_command "gzip $file"
+            # exec_command "mv ${RUN_DIR}/${filename}.gz ${RESTART_DIR}/"
+            exec_command "gzip \${RUN_DIR}/${filename}"
+            exec_command "mv \${RUN_DIR}/${filename}.gz \${RESTART_DIR}/"
           else
             message "File ${file} does not exist, skipping ..."
           fi
@@ -193,8 +225,10 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_output_priorinf*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          exec_command "gzip ${file}"
-          exec_command "mv ${RUN_DIR}/${filename}.gz ${INFLATION_DIR}/"
+          # exec_command "gzip ${file}"
+          # exec_command "mv ${RUN_DIR}/${filename}.gz ${INFLATION_DIR}/"
+          exec_command "gzip \${RUN_DIR}/${filename}"
+          exec_command "mv \${RUN_DIR}/${filename}.gz \${INFLATION_DIR}/"
         else
           message "File ${file} does not exist, skipping ..."
         fi
