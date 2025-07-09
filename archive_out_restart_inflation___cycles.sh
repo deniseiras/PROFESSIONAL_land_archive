@@ -1,29 +1,46 @@
 #!/bin/bash
 
 # Define parameters
-exp_name="d4o_all30_v11_30nodes"
+exp_name="d4o_all30_CERI9"
 dry_run=true
-rm_files=true
-year=2016
+rm_files=false
+year=2006
 start_month=01
-end_month=12
-machine="JUNO"
+end_month=11
+start_day=01     # only used for the first month of the period
+end_day=01       # only used for the last month of the period
+machine="ATOS"
 
+# if start_day is not set, default to 01
+if [ -z "$start_day" ]; then
+    start_day=01
+fi
 # Iterate over months from start_month to end_month
 for month in $(seq -w $start_month $end_month); do
-    # Define the start and end day of each month
-    case $month in
-        01|03|05|07|08|10|12) days=31;;
-        04|06|09|11) days=30;;
-        02) days=29;; # Not handling leap years for simplicity
-    esac
-    
+    # if month is not the first month, default to 01
+    if [ "$month" != "$start_month" ]; then
+      begin_day=01
+    else
+      begin_day=$start_day
+    fi
+
+    # if month is not the last month
+    if [ "$month" != "$end_month" ]; then
+        case $month in
+            01|03|05|07|08|10|12) finish_day=31;;
+            04|06|09|11) finish_day=30;;
+            02) finish_day=29;; # Not handling leap years for simplicity
+        esac
+     else
+        # if month is the last month, use end_day
+        finish_day=$end_day
+    fi 
     # Execute the command for the current month
-    echo "Executing ""$exp_name" "$dry_run" "$rm_files" "$year" "$year" "$month" "$month" 01 "$days"
-    ./archive_out_restart_inflation.sh "$exp_name" "$dry_run" "$rm_files" "$year" "$year" "$month" "$month" 01 "$days" "$machine" &
+    echo "Executing ""$exp_name" "$dry_run" "$rm_files" "$year" "$year" "$month" "$month" "$begin_day" "$finish_day" "$machine"
+    ./archive_out_restart_inflation.sh "$exp_name" "$dry_run" "$rm_files" "$year" "$year" "$month" "$month" "$begin_day" "$finish_day" "$machine" &
     
-    # Optional: Wait for the command to finish before proceeding
-    #wait
+    # Uncomment the next line if you want to wait for each month to finish before starting the next
+    # wait
 
 done
 
