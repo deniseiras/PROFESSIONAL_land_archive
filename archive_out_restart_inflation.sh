@@ -15,21 +15,26 @@ MM_INIT=$6      # eg 09
 MM_END=$7       # eg 12
 DD_INIT=$8      # eg 01
 DD_END=$9       # eg 31
+MACHINE=${10}   # JUNO / ATOS
 
 # Change ONCE !
 #
 
 # JUNO
-# # run directory where the data is located
-# RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the correct path
-# # archive directory where the files are stored
-# ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$EXP_NAME"
+if [ "$MACHINE" == "JUNO" ]; then
+  # run directory where the data is located
+  RUN_DIR="/work/cmcc/spreads-lnd/work_d4o/$EXP_NAME/run"  # Update with the correct path
+  # archive directory where the files are stored
+  ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$EXP_NAME"
+else
+  # ATOS
+  # run directory where the data is located
+  RUN_DIR="/lus/h1resw02/project/ita5542/work/exps/$EXP_NAME/run"  # Update with the correct path
+  # archive directory where the files are stored
+  ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$EXP_NAME"
+fi
 
-# ATOS
-# run directory where the data is located
-RUN_DIR="/lus/h1resw02/project/ita5542/work/exps/$EXP_NAME/run"  # Update with the correct path
-# archive directory where the files are stored
-ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$EXP_NAME"
+
 # nccopy command for generating netcdf4 files. Uses medium compression level (5) for balance between speed, compression and acess time
 NCCOPY_CMD="nccopy -k 4 -d 5"
 
@@ -84,25 +89,27 @@ if [ $DRY_RUN == "true" ]; then
   echo "Execution file: $ARCHIVE_EXEC_FILE being generated for posterior submission" 
 
   # JUNO
-  # exec_command "#!/bin/bash" "true"
-  # exec_command "#BSUB -n 1" "true"
-  # exec_command "#BSUB -q s_long" "true"
-  # exec_command "#BSUB -W 24:00" "true"
-  # exec_command "#BSUB -P 0575" "true"
-  # exec_command "#BSUB -J archive_land" "true"
-  # exec_command "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
-  # exec_command "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
-  # exec_command "#BSUB -R \"rusage[mem=500M]\"" "true"
-  # exec_command "#BSUB -app spreads_filter" "true"
-
-  # ATOS
-  exec_command "#!/bin/bash" "true"
-  exec_command "#SBATCH --ntasks=1" "true"
-  exec_command "#SBATCH --time=24:00:00" "true"
-  exec_command "#SBATCH --job-name=archive_land" "true"
-  exec_command "#SBATCH --output=../${ARCHIVE_LOG_FILE}" "true"
-  exec_command "#SBATCH --error=../${ARCHIVE_LOG_FILE}" "true"
-  exec_command "#SBATCH --mem=500M" "true"
+  if [ $MACHINE == "JUNO" ]; then
+    exec_command "#!/bin/bash" "true"
+    exec_command "#BSUB -n 1" "true"
+    exec_command "#BSUB -q s_long" "true"
+    exec_command "#BSUB -W 24:00" "true"
+    exec_command "#BSUB -P 0575" "true"
+    exec_command "#BSUB -J archive_land" "true"
+    exec_command "#BSUB -o ../${ARCHIVE_LOG_FILE}" "true"
+    exec_command "#BSUB -e ../${ARCHIVE_LOG_FILE}" "true"
+    exec_command "#BSUB -R \"rusage[mem=500M]\"" "true"
+    exec_command "#BSUB -app spreads_filter" "true"
+  else 
+    # ATOS
+    exec_command "#!/bin/bash" "true"
+    exec_command "#SBATCH --ntasks=1" "true"
+    exec_command "#SBATCH --time=24:00:00" "true"
+    exec_command "#SBATCH --job-name=archive_land" "true"
+    exec_command "#SBATCH --output=../${ARCHIVE_LOG_FILE}" "true"
+    exec_command "#SBATCH --error=../${ARCHIVE_LOG_FILE}" "true"
+    exec_command "#SBATCH --mem=500M" "true"
+  fi
 
   exec_command "export RUN_DIR='${RUN_DIR}'" "true"
   exec_command "export ARCHIVE_DIR='${ARCHIVE_DIR}'" "true"
