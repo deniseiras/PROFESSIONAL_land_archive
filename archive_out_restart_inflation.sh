@@ -216,10 +216,11 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
         for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*.rh*."$TARGET_DATE"-00000.nc; do
           if [ -e "$file" ]; then
             filename=$(basename "$file")
-            # exec_command "gzip $file"
-            # exec_command "mv ${RUN_DIR}/${filename}.gz ${RESTART_DIR}/"
-            exec_command "gzip \${RUN_DIR}/${filename}"
-            exec_command "mv \${RUN_DIR}/${filename}.gz \${RESTART_DIR}/"
+            exec_command "cp -rf \${RUN_DIR}/${filename} \${RESTART_DIR}/"
+            exec_command "gzip \${RESTART_DIR}/${filename} &"
+            if [[ "$REMOVE_FILES" == "true" ]]; then
+              exec_command "rm -f \${RUN_DIR}/${filename} &"
+            fi
           else
             message "File ${file} does not exist, skipping ..."
           fi
@@ -232,15 +233,15 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
       for file in "$RUN_DIR"/clm_output_priorinf*."$TARGET_DATE"-00000.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
-          # exec_command "gzip ${file}"
-          # exec_command "mv ${RUN_DIR}/${filename}.gz ${INFLATION_DIR}/"
-          exec_command "gzip \${RUN_DIR}/${filename}"
-          exec_command "mv \${RUN_DIR}/${filename}.gz \${INFLATION_DIR}/"
+          exec_command "cp -rf \${RUN_DIR}/${filename} \${INFLATION_DIR}/"
+          exec_command "gzip \${INFLATION_DIR}/${filename} &" 
+          if [[ "$REMOVE_FILES" == "true" ]]; then
+            exec_command "rm -f \${RUN_DIR}/${filename} &"
+          fi
         else
           message "File ${file} does not exist, skipping ..."
         fi
       done
-
       message "Archiving completed for date ${TARGET_DATE}"
 
     done # dd
