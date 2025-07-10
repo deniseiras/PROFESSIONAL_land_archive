@@ -213,7 +213,7 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
         mkdir -p "$RESTART_DIR"
 
         # Archive and move all restart files for the given date from RUN_DIR to ARCHIVE_DIR
-        for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc "$RUN_DIR"/"$EXP_NAME"*.rh*."$TARGET_DATE"-00000.nc; do
+        for file in "$RUN_DIR"/"$EXP_NAME"*.r*."$TARGET_DATE"-00000.nc ; do
           if [ -e "$file" ]; then
             filename=$(basename "$file")
             exec_command "cp -rf \${RUN_DIR}/${filename} \${RESTART_DIR}/"
