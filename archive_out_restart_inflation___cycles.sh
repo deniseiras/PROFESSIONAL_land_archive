@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Define parameters
-exp_name="d4o_all30_CERI9"
+exp_name="d4o_all30_v11_30nodes"
 dry_run=true
-rm_files=false
-year=2006
+rm_files=true
+year=2017
 start_month=01
 end_month=11
-start_day=01     # only used for the first month of the period
-end_day=01       # only used for the last month of the period
-machine="ATOS"
+start_day=     # only used for the first month of the period
+end_day=       # only used for the last month of the period
+machine="JUNO"
 
 # if start_day is not set, default to 01
 if [ -z "$start_day" ]; then
@@ -25,7 +25,7 @@ for month in $(seq -w $start_month $end_month); do
     fi
 
     # if month is not the last month
-    if [ "$month" != "$end_month" ]; then
+    if [ "$month" != "$end_month" ] || [ -z "$end_day" ]; then
         case $month in
             01|03|05|07|08|10|12) finish_day=31;;
             04|06|09|11) finish_day=30;;
