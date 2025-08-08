@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: check_archive.sh <exp_name> <archive_root_dir> <year> <start_month> <start_day> <end_month> <end_day>
+# Usage: check_archive.sh <exp_name> <archive_root_dir> <start_date> <end_date> [max_h]
 # Example: check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
 
 exp_name=$1         # experiment name, e.g. d4o_all30_CERI7
@@ -96,7 +96,8 @@ for i_year in $(seq $start_year $end_year); do
 
 
       echo "Checking OUTPUT and RESTART files..."
-      for h in {0..7}; do # when is 08 ?
+      
+      for h in $(seq 0 $max_h); do
 
         for memb in $(seq -f "%04g" 1 30); do
 
