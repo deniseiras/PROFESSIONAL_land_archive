@@ -1,33 +1,17 @@
 #!/bin/bash
 
-# Define parameters ================================================================
-# exp_name="d4o_all30_CERI5"
-# year=2003
-# start_month=04
-# start_day=22     # only used for the first month of the period
-# end_month=04
-# end_day=22       # only used for the last month of the period
-# machine="ATOS"
-exp_name=$1
-year=$2
-start_month=$3
-start_day=$4
-end_month=$5
-end_day=$6
-machine=$7
+# Usage: check_archive.sh <exp_name> <archive_root_dir> <year> <start_month> <start_day> <end_month> <end_day>
+# Example: check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 2004 01 01 12 31
 
-# Change ONCE !
-# JUNO
-if [ "$machine" == "JUNO" ]; then
-  # archive directory where the files are stored
-  ARCHIVE_DIR="/work/cmcc/spreads-lnd/land/archive/$exp_name"
-else
-  # ATOS 
-  # archive directory where the files are stored
-  # ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$exp_name"
-  # ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/${exp_name}_$(date +%Y%m%d)" - used temporarily
-  ARCHIVE_DIR="/ec/res4/scratch/ita6760/land/archive/$exp_name"
-fi
+exp_name=$1
+archive_root_dir=$2
+year=$3
+start_month=$4
+start_day=$5
+end_month=$6
+end_day=$7
+
+archive_dir="${archive_root_dir}/${exp_name}"
 
 
 # Functions =======================================================================
@@ -56,7 +40,7 @@ if [ -z "$start_day" ]; then
 fi
 
 hour_now=$(date +"%Y-%m-%d_%H%M%S")
-date_ini_end=${year}${month}${star_day}-${year}${month}${end_day}
+date_ini_end=${year}${start_month}${start_day}-${year}${end_month}${end_day}
 arch_log_file="./check_archive__${exp_name}_${date_ini_end}__at_${hour_now}.log"
 
 # Execute the command for the current month
@@ -100,10 +84,10 @@ for month in $(seq -w $start_month $end_month); do
     echo "================================================================================================================================================="
     echo "Starting checking date ${target_date}"
 
-    # subdirectories for organized archiving within ARCHIVE_DIR
-    output_dir="$ARCHIVE_DIR/output_history_$target_date"
-    restart_dir="$ARCHIVE_DIR/restart_$target_date"
-    inflation_dir="$ARCHIVE_DIR/inflation_$target_date"
+    # subdirectories for organized archiving within archive_dir
+    output_dir="$archive_dir/output_history_$target_date"
+    restart_dir="$archive_dir/restart_$target_date"
+    inflation_dir="$archive_dir/inflation_$target_date"
 
 
     echo "Checking OUTPUT and RESTART files..."
@@ -159,7 +143,7 @@ for month in $(seq -w $start_month $end_month); do
             fi
 
             # d4o_all30_CERI7.hydros_0001.rh0.2004-01-01-00000.nc.gz
-            hydros_rh0_file="${output_dir}/${exp_name}.hydros_${memb}.rh0.${target_date}-00000.nc.gz"
+            hydros_rh0_file="${restart_dir}/${exp_name}.hydros_${memb}.rh0.${target_date}-00000.nc.gz"
             if [ ! -e "$hydros_rh0_file" ]; then
               write_file "${hydros_rh0_file}"
             fi
@@ -234,9 +218,9 @@ echo "==========================================================================
 echo "Checking completed for dates between days ${begin_day} and ${finish_day}, month ${month} and ${month} of year between ${year} and ${year}"
 # if file arch_log_file exists, print that there are no files not found, otherwise print No errors found
 if [ ! -e "$arch_log_file" ]; then
-  echo "No errors found, all files are present in the archive directory $ARCHIVE_DIR"
+  echo "No errors found, all files are present in the archive directory $archive_dir"
 else
-  echo "Errors found, some files are missing in the archive directory $ARCHIVE_DIR, check the log file for details"
+  echo "Errors found, some files are missing in the archive directory $archive_dir, check the log file for details"
   echo "Log file: $arch_log_file"
 fi
 echo "================================================================================================================================================="
