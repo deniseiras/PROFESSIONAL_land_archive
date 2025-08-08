@@ -4,7 +4,7 @@
 # Example: ./check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
 
 exp_name=$1         # experiment name, e.g. d4o_all30_CERI7
-archive_root_dir=$2 # without exp_name
+archive_dir=$2 # 
 start_date=$3       # start_date in format YYYYMMDD
 end_date=$4         # end_date in format YYYYMMDD
 max_h=${5:-7}       # max_h=$5 optional, otherwise defaults to 7
@@ -16,8 +16,6 @@ start_day=$(echo $start_date | cut -c7-8)
 end_year=$(echo $end_date | cut -c1-4)
 end_month=$(echo $end_date | cut -c5-6)
 end_day=$(echo $end_date | cut -c7-8)
-
-archive_dir="${archive_root_dir}/${exp_name}"
 
 
 # Functions =======================================================================
