@@ -1,15 +1,21 @@
 #!/bin/bash
 
 # Usage: check_archive.sh <exp_name> <archive_root_dir> <year> <start_month> <start_day> <end_month> <end_day>
-# Example: check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 2004 01 01 12 31
+# Example: check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
 
-exp_name=$1
-archive_root_dir=$2
-year=$3
-start_month=$4
-start_day=$5
-end_month=$6
-end_day=$7
+exp_name=$1         # experiment name, e.g. d4o_all30_CERI7
+archive_root_dir=$2 # without exp_name
+start_date=$3       # start_date in format YYYYMMDD
+end_date=$4         # end_date in format YYYYMMDD
+max_h=${5:-7}       # max_h=$5 optional, otherwise defaults to 7
+
+# Parse start_date and end_date
+start_year=$(echo $start_date | cut -c1-4)
+start_month=$(echo $start_date | cut -c5-6)
+start_day=$(echo $start_date | cut -c7-8)
+end_year=$(echo $end_date | cut -c1-4)
+end_month=$(echo $end_date | cut -c5-6)
+end_day=$(echo $end_date | cut -c7-8)
 
 archive_dir="${archive_root_dir}/${exp_name}"
 
@@ -24,10 +30,9 @@ min() {
 # - when using dry run, messages are comented in exec file
 # - otherwise messages are printed to the log file
 write_file() {
-  MESSAGE=$1
-
-  MSG_TIME="echo ${MESSAGE}"
-  eval $MSG_TIME >> $arch_log_file
+  msg=$1
+  msg_comm="echo ${msg}"
+  eval $msg_comm >> $arch_log_file
 
 }
 
@@ -40,174 +45,175 @@ if [ -z "$start_day" ]; then
 fi
 
 hour_now=$(date +"%Y-%m-%d_%H%M%S")
-date_ini_end=${year}${start_month}${start_day}-${year}${end_month}${end_day}
-arch_log_file="./check_archive__${exp_name}_${date_ini_end}__at_${hour_now}.log"
+arch_log_file="./check_archive__${exp_name}_${start_date}_${end_date}__at_${hour_now}.log"
 
 # Execute the command for the current month
-echo "Checking $exp_name , dates from to: $date_ini_end , on machine: $machine "
+echo "Checking $exp_name , dates from: ${start_date} to: ${end_date}"
 echo "If there are files not found, log file will be generated"
 echo "Log file: $arch_log_file"
 
-# Iterate over months from start_month to end_month
-for month in $(seq -w $start_month $end_month); do
-  # if month is not the first month, default to 01
-  if [ "$month" != "$start_month" ]; then
-    begin_day=01
-  else
-    begin_day=$start_day
-  fi
 
-  # if month is not the last month
-  if [ "$month" != "$end_month" ] || [ -z "$end_day" ]; then
-    # Define the maximum number of days for each month
-    if [[ "$month" == "02" ]]; then
-      if (( $year % 4 == 0 && ($year % 100 != 0 || $year % 400 == 0) )); then
-        finish_day=29  # Leap year
-      else
-        finish_day=28
-      fi
-    elif [ "$month" == "04" ] || [ "$month" == "06" ] || [ "$month" == "09" ] || [ "$month" == "11" ]; then
-      finish_day=30
+# Iterate over years from start_year to end_year
+for i_year in $(seq $start_year $end_year); do
+
+  # Iterate over months from start_month to end_month
+  for i_month in $(seq -w $start_month $end_month); do
+
+    if [ "$i_year" -eq "$start_year" ] && [ "$i_month" == "$start_month" ]; then
+      begin_day=$start_day
     else
-      finish_day=31
+      begin_day=01
     fi
-  else
-    # if month is the last month, use end_day
-    finish_day=$end_day
-  fi 
-  
 
-  # Loop over the days inputed by the user
-  for iday in $(seq -w "$begin_day" "$finish_day"); do
-    # Specify the target date (e.g., 2000-03-15)
-    target_date="${year}-${month}-${iday}"
-    echo "================================================================================================================================================="
-    echo "Starting checking date ${target_date}"
+    if [ "$i_year" -eq "$end_year" ] && [ "$i_month" == "$end_month" ]; then
+      finish_day=$end_day
+    else
+      if [[ "$i_month" == "02" ]]; then
+        if (( $i_year % 4 == 0 && ($i_year % 100 != 0 || $i_year % 400 == 0) )); then
+          finish_day=29  # Leap year
+        else
+          finish_day=28
+        fi
+      elif [ "$i_month" == "04" ] || [ "$i_month" == "06" ] || [ "$i_month" == "09" ] || [ "$i_month" == "11" ]; then
+        finish_day=30
+      else
+        finish_day=31
+      fi
+    fi 
+    
 
-    # subdirectories for organized archiving within archive_dir
-    output_dir="$archive_dir/output_history_$target_date"
-    restart_dir="$archive_dir/restart_$target_date"
-    inflation_dir="$archive_dir/inflation_$target_date"
+    # Loop over the days inputed by the user
+    for i_day in $(seq -w "$begin_day" "$finish_day"); do
+
+      target_date="${i_year}-${i_month}-${i_day}"
+      echo "================================================================================================================================================="
+      echo "Starting checking date ${target_date}"
+
+      # subdirectories for organized archiving within archive_dir
+      output_dir="$archive_dir/output_history_$target_date"
+      restart_dir="$archive_dir/restart_$target_date"
+      inflation_dir="$archive_dir/inflation_$target_date"
 
 
-    echo "Checking OUTPUT and RESTART files..."
-    for h in {0..7}; do # when is 08 ?
+      echo "Checking OUTPUT and RESTART files..."
+      for h in {0..7}; do # when is 08 ?
 
-      for memb in $(seq -f "%04g" 1 30); do
+        for memb in $(seq -f "%04g" 1 30); do
 
-        # OUTPUT files
+          # OUTPUT files
+          #
+
+          # d4o_all30_CERI5.clm2_0001.h0.2003-04-22-00000_nc4.nc
+          output_file="${output_dir}/${exp_name}.clm2_${memb}.h${h}.${target_date}-00000_nc4.nc"
+          if [ ! -e "$output_file" ]; then
+            write_file "${output_file}"
+          fi
+
+          # RESTART files
+          #
+
+          day_of_month=$(date -d "$target_date" +%d)
+          # Only check restart files if the date is the 1st or 15th of the month
+          if [[ "$day_of_month" == "01" || "$day_of_month" == "15" ]]; then
+            
+            # d4o_all30_CERI7.clm2_0001.rh0.2004-01-01-00000.nc.gz
+            history_m_file="${restart_dir}/${exp_name}.clm2_${memb}.rh${h}.${target_date}-00000.nc.gz"
+            if [ ! -e "$history_m_file" ]; then
+              write_file "${history_m_file}"
+            fi
+            # Only check once for member
+            if [ "$h" -eq 0 ]; then
+              # d4o_all30_CERI7.clm2_0001.r.2004-01-01-00000.nc.gz
+              history_r_file="${restart_dir}/${exp_name}.clm2_${memb}.r.${target_date}-00000.nc.gz"
+              if [ ! -e "$history_r_file" ]; then
+                write_file "${history_r_file}"
+              fi
+
+              # d4o_all30_CERI7.cpl_0001.r.2004-01-01-00000.nc.gz
+              cpl_r_file="${restart_dir}/${exp_name}.cpl_${memb}.r.${target_date}-00000.nc.gz"
+              if [ ! -e "$cpl_r_file" ]; then
+                write_file "${cpl_r_file}" 
+              fi
+
+              # d4o_all30_CERI7.datm_0001.r.2004-01-01-00000.nc.gz
+              datm_r_file="${restart_dir}/${exp_name}.datm_${memb}.r.${target_date}-00000.nc.gz"
+              if [ ! -e "$datm_r_file" ]; then
+                write_file "${datm_r_file}"
+              fi
+
+              # d4o_all30_CERI7.hydros_0001.r.2004-01-01-00000.nc.gz
+              hydros_r_file="${restart_dir}/${exp_name}.hydros_${memb}.r.${target_date}-00000.nc.gz"
+              if [ ! -e "$hydros_r_file" ]; then
+                write_file "${hydros_r_file}"
+              fi
+
+              # d4o_all30_CERI7.hydros_0001.rh0.2004-01-01-00000.nc.gz
+              hydros_rh0_file="${restart_dir}/${exp_name}.hydros_${memb}.rh0.${target_date}-00000.nc.gz"
+              if [ ! -e "$hydros_rh0_file" ]; then
+                write_file "${hydros_rh0_file}"
+              fi
+            fi
+          fi  # if 1st or 15th of the month
+        done # memb
+      done # h
+
+      echo "Checking PREASSIM, ANALYSIS and INFLATION files ..."
+      for d in $(seq -f "%02g" 1 3); do
+
+        for memb in $(seq -f "%04g" 1 30); do
+          # clm_analysis_member_0001_d01.2004-01-01-00000_nc4.nc
+          analysis_file="${output_dir}/clm_analysis_member_${memb}_d${d}.${target_date}-00000_nc4.nc"
+          if [ ! -e "$analysis_file" ]; then
+            write_file "${analysis_file}"
+          fi
+          # clm_preassim_member_0001_d01.2004-01-01-00000_nc4.nc
+          preassim_member_file="${output_dir}/clm_preassim_member_${memb}_d${d}.${target_date}-00000_nc4.nc"
+          if [ ! -e "$preassim_member_file" ]; then
+            write_file "${preassim_member_file}"
+          fi
+        done
+
+        # clm_analysis_mean_d01.2004-01-01-00000_nc
+        analysis_mean_file="${output_dir}/clm_analysis_mean_d${d}.${target_date}-00000_nc4.nc"
+        if [ ! -e "$analysis_mean_file" ]; then
+          write_file "${analysis_mean_file}"
+        fi
+        # clm_analysis_sd_d01.2004-01-01-00000_nc
+        analysis_sd_file="${output_dir}/clm_analysis_sd_d${d}.${target_date}-00000_nc4.nc"
+        if [ ! -e "$analysis_sd_file" ]; then
+          write_file "${analysis_sd_file}"
+        fi
+        # clm_preassim_mean_d01.2004-01-01-00000_nc
+        preassim_mean_file="${output_dir}/clm_preassim_mean_d${d}.${target_date}-00000_nc4.nc"
+        if [ ! -e "$preassim_mean_file" ]; then
+          write_file "${preassim_mean_file}"
+        fi
+        # clm_preassim_sd_d01.2004-01-01-00000_nc
+        preassim_sd_file="${output_dir}/clm_preassim_sd_d${d}.${target_date}-00000_nc4.nc"
+        if [ ! -e "$preassim_sd_file" ]; then
+          write_file "${preassim_sd_file}"
+        fi
+
+
+        # INFLATION files
         #
 
-        # d4o_all30_CERI5.clm2_0001.h0.2003-04-22-00000_nc4.nc
-        output_file="${output_dir}/${exp_name}.clm2_${memb}.h${h}.${target_date}-00000_nc4.nc"
-        if [ ! -e "$output_file" ]; then
-          write_file "${output_file}"
+        # clm_output_priorinf_mean_d01.2004-01-01-00000.nc.gz
+        output_priorinf_mean_file="${inflation_dir}/clm_output_priorinf_mean_d${d}.${target_date}-00000.nc.gz"
+        if [ ! -e "$output_priorinf_mean_file" ]; then
+          write_file "${output_priorinf_mean_file}"
+        fi
+        # clm_output_priorinf_sd_d01.2004-01-01-00000.nc.gz
+        output_priorinf_sd_file="${inflation_dir}/clm_output_priorinf_sd_d${d}.${target_date}-00000.nc.gz"
+        if [ ! -e "$output_priorinf_sd_file" ]; then
+          write_file "${output_priorinf_sd_file}"
         fi
 
-        # RESTART files
-        #
+      done # d
 
-        day_of_month=$(date -d "$target_date" +%d)
-        # Only check restart files if the date is the 1st or 15th of the month
-        if [[ "$day_of_month" == "01" || "$day_of_month" == "15" ]]; then
-          
-          # d4o_all30_CERI7.clm2_0001.rh0.2004-01-01-00000.nc.gz
-          history_m_file="${restart_dir}/${exp_name}.clm2_${memb}.rh${h}.${target_date}-00000.nc.gz"
-          if [ ! -e "$history_m_file" ]; then
-            write_file "${history_m_file}"
-          fi
-          # Only check once for member
-          if [ "$h" -eq 0 ]; then
-            # d4o_all30_CERI7.clm2_0001.r.2004-01-01-00000.nc.gz
-            history_r_file="${restart_dir}/${exp_name}.clm2_${memb}.r.${target_date}-00000.nc.gz"
-            if [ ! -e "$history_r_file" ]; then
-              write_file "${history_r_file}"
-            fi
-
-            # d4o_all30_CERI7.cpl_0001.r.2004-01-01-00000.nc.gz
-            cpl_r_file="${restart_dir}/${exp_name}.cpl_${memb}.r.${target_date}-00000.nc.gz"
-            if [ ! -e "$cpl_r_file" ]; then
-              write_file "${cpl_r_file}" 
-            fi
-
-            # d4o_all30_CERI7.datm_0001.r.2004-01-01-00000.nc.gz
-            datm_r_file="${restart_dir}/${exp_name}.datm_${memb}.r.${target_date}-00000.nc.gz"
-            if [ ! -e "$datm_r_file" ]; then
-              write_file "${datm_r_file}"
-            fi
-
-            # d4o_all30_CERI7.hydros_0001.r.2004-01-01-00000.nc.gz
-            hydros_r_file="${restart_dir}/${exp_name}.hydros_${memb}.r.${target_date}-00000.nc.gz"
-            if [ ! -e "$hydros_r_file" ]; then
-              write_file "${hydros_r_file}"
-            fi
-
-            # d4o_all30_CERI7.hydros_0001.rh0.2004-01-01-00000.nc.gz
-            hydros_rh0_file="${restart_dir}/${exp_name}.hydros_${memb}.rh0.${target_date}-00000.nc.gz"
-            if [ ! -e "$hydros_rh0_file" ]; then
-              write_file "${hydros_rh0_file}"
-            fi
-          fi
-        fi  # if 1st or 15th of the month
-      done # memb
-    done # h
-
-    echo "Checking PREASSIM, ANALYSIS and INFLATION files ..."
-    for d in $(seq -f "%02g" 1 3); do
-
-      for memb in $(seq -f "%04g" 1 30); do
-        # clm_analysis_member_0001_d01.2004-01-01-00000_nc4.nc
-        analysis_file="${output_dir}/clm_analysis_member_${memb}_d${d}.${target_date}-00000_nc4.nc"
-        if [ ! -e "$analysis_file" ]; then
-          write_file "${analysis_file}"
-        fi
-        # clm_preassim_member_0001_d01.2004-01-01-00000_nc4.nc
-        preassim_member_file="${output_dir}/clm_preassim_member_${memb}_d${d}.${target_date}-00000_nc4.nc"
-        if [ ! -e "$preassim_member_file" ]; then
-          write_file "${preassim_member_file}"
-        fi
-      done
-
-      # clm_analysis_mean_d01.2004-01-01-00000_nc
-      analysis_mean_file="${output_dir}/clm_analysis_mean_d${d}.${target_date}-00000_nc4.nc"
-      if [ ! -e "$analysis_mean_file" ]; then
-        write_file "${analysis_mean_file}"
-      fi
-      # clm_analysis_sd_d01.2004-01-01-00000_nc
-      analysis_sd_file="${output_dir}/clm_analysis_sd_d${d}.${target_date}-00000_nc4.nc"
-      if [ ! -e "$analysis_sd_file" ]; then
-        write_file "${analysis_sd_file}"
-      fi
-      # clm_preassim_mean_d01.2004-01-01-00000_nc
-      preassim_mean_file="${output_dir}/clm_preassim_mean_d${d}.${target_date}-00000_nc4.nc"
-      if [ ! -e "$preassim_mean_file" ]; then
-        write_file "${preassim_mean_file}"
-      fi
-      # clm_preassim_sd_d01.2004-01-01-00000_nc
-      preassim_sd_file="${output_dir}/clm_preassim_sd_d${d}.${target_date}-00000_nc4.nc"
-      if [ ! -e "$preassim_sd_file" ]; then
-        write_file "${preassim_sd_file}"
-      fi
-
-
-      # INFLATION files
-      #
-
-      # clm_output_priorinf_mean_d01.2004-01-01-00000.nc.gz
-      output_priorinf_mean_file="${inflation_dir}/clm_output_priorinf_mean_d${d}.${target_date}-00000.nc.gz"
-      if [ ! -e "$output_priorinf_mean_file" ]; then
-        write_file "${output_priorinf_mean_file}"
-      fi
-      # clm_output_priorinf_sd_d01.2004-01-01-00000.nc.gz
-      output_priorinf_sd_file="${inflation_dir}/clm_output_priorinf_sd_d${d}.${target_date}-00000.nc.gz"
-      if [ ! -e "$output_priorinf_sd_file" ]; then
-        write_file "${output_priorinf_sd_file}"
-      fi
-
-    done # d
-
-  done # iday
-done # month
+    done # i_day
+  done # i_month
+done # i_year
 
 # TODO check for that
 # # Remove unwanted clm_output_mean and clm_output_sd files for the given date in RUN_DIR
@@ -215,7 +221,7 @@ done # month
 
 echo
 echo "================================================================================================================================================="
-echo "Checking completed for dates between days ${begin_day} and ${finish_day}, month ${month} and ${month} of year between ${year} and ${year}"
+echo "Checking completed for dates between ${start_date} and ${end_date} in archive directory $archive_dir"
 # if file arch_log_file exists, print that there are no files not found, otherwise print No errors found
 if [ ! -e "$arch_log_file" ]; then
   echo "No errors found, all files are present in the archive directory $archive_dir"
