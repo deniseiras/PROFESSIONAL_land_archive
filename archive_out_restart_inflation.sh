@@ -30,8 +30,13 @@ else
   # ATOS
   # run directory where the data is located
   RUN_DIR="/lus/h1resw02/project/ita5542/work/exps/$EXP_NAME/run"  # Update with the correct path
+  #RUN_DIR="/ec/res4/scratch/ita8119/LGG/$EXP_NAME/run"  # CERI5
+  
   # archive directory where the files are stored
-  ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$EXP_NAME"
+  # ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/$EXP_NAME"
+  # ARCHIVE_DIR="/ec/res4/scratch/ita5542/land/archive/${EXP_NAME}_$(date +%Y%m%d)" - used temporarily
+  ARCHIVE_DIR="/ec/res4/scratch/ita6760/land/archive/$EXP_NAME"
+
 fi
 
 
@@ -162,7 +167,7 @@ for yyyy in $(seq -w $YYYY_INIT $YYYY_END); do
 
 
       message "Compressing OUTPUT/HISTORY files with netcdf4 format..."
-      for file in "$RUN_DIR"/"$EXP_NAME"*.h[0-9]*."$TARGET_DATE"-00000.nc; do
+      for file in "$RUN_DIR"/"$EXP_NAME"*.h[0-9]*."$TARGET_DATE"-*.nc; do
         if [ -e "$file" ]; then
           filename=$(basename "$file")
 
