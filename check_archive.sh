@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage: check_archive.sh <exp_name> <archive_root_dir> <start_date> <end_date> [max_h]
-# Example: check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
+# Example: ./check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
 
 exp_name=$1         # experiment name, e.g. d4o_all30_CERI7
 archive_root_dir=$2 # without exp_name
@@ -56,8 +56,22 @@ echo "Log file: $arch_log_file"
 # Iterate over years from start_year to end_year
 for i_year in $(seq $start_year $end_year); do
 
-  # Iterate over months from start_month to end_month
-  for i_month in $(seq -w $start_month $end_month); do
+  # If the year is the start year, set the start month
+  if [ "$i_year" -eq "$start_year" ]; then
+    begin_month=$start_month
+  else
+    begin_month=01
+  fi
+  # If the year is the end year, set the end month
+  if [ "$i_year" -eq "$end_year" ]; then
+    finish_month=$end_month
+  else
+    finish_month=12
+  fi
+
+  # Iterate over months from begin_month to finish_month
+  # Use seq -w to ensure months are zero-padded  
+  for i_month in $(seq -w $begin_month $finish_month); do
 
     if [ "$i_year" -eq "$start_year" ] && [ "$i_month" == "$start_month" ]; then
       begin_day=$start_day
@@ -85,6 +99,7 @@ for i_year in $(seq $start_year $end_year); do
     # Loop over the days inputed by the user
     for i_day in $(seq -w "$begin_day" "$finish_day"); do
 
+   
       target_date="${i_year}-${i_month}-${i_day}"
       echo "================================================================================================================================================="
       echo "Starting checking date ${target_date}"
