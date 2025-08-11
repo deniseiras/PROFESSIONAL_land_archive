@@ -81,9 +81,9 @@ for i_year in $(seq $start_year $end_year); do
               copy_file "${restart_dir}/${exp_name}.hydros_${memb}.r.${target_date}-00000.nc.gz" "$restart_out"
               copy_file "${restart_dir}/${exp_name}.hydros_${memb}.rh0.${target_date}-00000.nc.gz" "$restart_out"
             fi
-          fi
+          done
         done
-      done
+      fi
     done
   done
 done
