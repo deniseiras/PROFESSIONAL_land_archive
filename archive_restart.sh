@@ -25,6 +25,7 @@ write_file() { echo "$1" >> "$arch_log_file"; }
 
 # Fast checksum method
 CHECKSUM_CMD="md5sum"  # change to xxh64sum if installed for even faster checks
+PARALLEL_PROCESSES=64
 
 declare -a copy_pids
 declare -a files_to_check
@@ -37,6 +38,10 @@ copy_file() {
         cp -uv "$src_file" "$dest_dir" &
         copy_pids+=($!)
         files_to_check+=("$src_file|$dest_dir/$(basename "$src_file")")
+        # Limit copies in parallel
+        while (( $(jobs -r | wc -l) >= PARALLEL_PROCESSES )); do
+            wait -n
+        done
     else
         write_file "$src_file"
     fi
@@ -88,11 +93,9 @@ for i_year in $(seq $start_year $end_year); do
   done
 done
 
-# Wait for all copies
 echo "Waiting for all copies to complete..."
-for pid in "${copy_pids[@]}"; do wait "$pid"; done
+wait
 
-# Verify checksums in parallel
 echo "Verifying checksums..."
 erro=0
 for entry in "${files_to_check[@]}"; do
@@ -113,6 +116,10 @@ for entry in "${files_to_check[@]}"; do
             erro=1
         fi
     ) &
+    # Limit checksum jobs in parallel
+    while (( $(jobs -r | wc -l) >= PARALLEL_PROCESSES )); do
+        wait -n
+    done
 done
 wait
 
