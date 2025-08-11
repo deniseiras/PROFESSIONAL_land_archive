@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage: check_archive.sh <exp_name> <archive_root_dir> <start_date> <end_date> [max_h]
-# Example: ./check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive 20030521 20030525 7
+# Example: ./check_archive.sh d4o_all30_CERI7 /ec/res4/scratch/ita6760/land/archive/d4o_all30_CERI7 20030521 20030525 7
 
 exp_name=$1         # experiment name, e.g. d4o_all30_CERI7
 archive_dir=$2 # 
