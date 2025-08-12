@@ -229,10 +229,6 @@ for i_year in $(seq $start_year $end_year); do
   done # i_month
 done # i_year
 
-# TODO check for that
-# # Remove unwanted clm_output_mean and clm_output_sd files for the given date in RUN_DIR
-# rm -f "$RUN_DIR"/"$exp_name"*clm_output_mean*."$target_date"-00000.nc "$RUN_DIR"/"$exp_name"*clm_output_sd*."$target_date"-00000.nc
-
 echo
 echo "================================================================================================================================================="
 echo "Checking completed for dates between ${start_date} and ${end_date} in archive directory $archive_dir"
