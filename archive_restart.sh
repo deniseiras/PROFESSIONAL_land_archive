@@ -8,6 +8,7 @@ archive_out=$3      # copy to
 start_date=$4       # start_date in format YYYYMMDD
 end_date=$5         # end_date in format YYYYMMDD
 max_h=${6:-7}       # optional, defaults to 7
+do_checksum=${8:-true}
 
 # Parse start_date and end_date
 start_year=$(echo $start_date | cut -c1-4)
@@ -93,35 +94,38 @@ for i_year in $(seq $start_year $end_year); do
   done
 done
 
-echo "Waiting for all copies to complete..."
-wait
 
-echo "Verifying checksums..."
 erro=0
-for entry in "${files_to_check[@]}"; do
-    (
-        src="${entry%%|*}"
-        dest="${entry##*|}"
-        if [ -f "$dest" ]; then
-            src_sum=$($CHECKSUM_CMD "$src" | awk '{print $1}')
-            dest_sum=$($CHECKSUM_CMD "$dest" | awk '{print $1}')
-            if [[ "$src_sum" != "$dest_sum" ]]; then
-                echo "ERROR: $dest checksum mismatch"
-                erro=1
-            else
-                echo "OK: $dest"
-            fi
-        else
-            echo "ERROR: Missing file $dest"
-            erro=1
-        fi
-    ) &
-    # Limit checksum jobs in parallel
-    while (( $(jobs -r | wc -l) >= PARALLEL_PROCESSES )); do
-        wait -n
-    done
-done
-wait
+if [[ "$do_checksum" == "true" ]]; then
+  echo "Waiting for all copies to complete..."
+  wait
+
+  echo "Verifying checksums..."
+  for entry in "${files_to_check[@]}"; do
+      (
+          src="${entry%%|*}"
+          dest="${entry##*|}"
+          if [ -f "$dest" ]; then
+              src_sum=$($CHECKSUM_CMD "$src" | awk '{print $1}')
+              dest_sum=$($CHECKSUM_CMD "$dest" | awk '{print $1}')
+              if [[ "$src_sum" != "$dest_sum" ]]; then
+                  echo "ERROR: $dest checksum mismatch"
+                  erro=1
+              else
+                  echo "OK: $dest"
+              fi
+          else
+              echo "ERROR: Missing file $dest"
+              erro=1
+          fi
+      ) &
+      # Limit checksum jobs in parallel
+      while (( $(jobs -r | wc -l) >= PARALLEL_PROCESSES )); do
+          wait -n
+      done
+  done
+  wait
+fi 
 
 echo
 echo "================================================================================================================================================="

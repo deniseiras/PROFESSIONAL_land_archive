@@ -1,23 +1,26 @@
 #!/bin/bash
 #BSUB -P 0575
 #BSUB -q s_download
-#BSUB -J rsync_archive_from_atos
+#BSUB -J check_rsync_archive_from_atos
 #BSUB -W 23:59
 #BSUB -n 1
-#BSUB -R "rusage[mem=2048]"
+#BSUB -R "rusage[mem=1024]"
 
+
+# This script does does a rsync without paralelization from ATOS to JUNO. The parameter fix indicates dryrun or not.
+# Use it at the end of runs using rsync_archive_from_atos.sh, to check/fix errors.
 
 # === Parameters from environment ===
 SRC_USER="${SRC_USER:-ita6760}"
 SRC_HOST="${SRC_HOST:-hpc-login}"
 EXP="${EXP:-d4o_all30_CERI5B}"
 EXP_USER="${EXP_USER:-ita6760}"
-PARALLEL_COPIES_NUM="${PARALLEL_COPIES_NUM:-4}"   # safer default
+FIX="${FIX:-n}" # n=dryrun = do not fix. Pass "v"  fix (just verbose flag again)
 # ===================================
 
-LOG="rsync_${SRC_USER}_${SRC_HOST}_${EXP}_${EXP_USER}_${PARALLEL_COPIES_NUM}_$(date +%Y%m%d%H%M).log"
+LOG="check_rsync_${FIX}_${SRC_USER}_${SRC_HOST}_${EXP}_${EXP_USER}_$(date +%Y%m%d%H%M).log"
 
-echo "Beginning rsync at $(date)" >> "$LOG"
+echo "Beginning checking rsync at $(date)" >> "$LOG"
 
 SRC_BASE="/ec/res4/scratch/${EXP_USER}/land/archive/${EXP}/"
 DST_BASE="/work/cmcc/spreads-lnd/land/archive/${EXP}/"
@@ -50,42 +53,12 @@ ensure_ssh_connection() {
     exit 1
 }
 
-# Initial connection
 ensure_ssh_connection
 
-echo "Listing directories in remote host ..." >> "$LOG"
-DIRS=$(ssh -o ControlPath=$CTL_PATH ${SRC_USER}@${SRC_HOST} \
-        "ls -1d ${SRC_BASE}/* 2>/dev/null")
-
-# Convert to array
-readarray -t DIR_ARRAY <<< "$DIRS"
-
-# Counter for parallel jobs
-count=0
-
-for dir in "${DIR_ARRAY[@]}"; do
-    echo "======================== processing dir = $dir" >> "$LOG"
-
-    rel_dir="${dir#$SRC_BASE}"
-    mkdir -p "${DST_BASE}/${rel_dir}" >> "$LOG" 2>&1
-
-    # ensure connection before rsync
-    ensure_ssh_connection
-
-    # rsync using the multiplexed connection
-    stdbuf -oL rsync -e "ssh -o ControlPath=$CTL_PATH" \
-        -rtvhz "${SRC_USER}@${SRC_HOST}:/${dir}/" "${DST_BASE}/${rel_dir}/" \
-        >> "$LOG" 2>&1 &
-
-    ((count++))
-    if (( count % PARALLEL_COPIES_NUM == 0 )); then
-        wait
-    fi
-done
-
-wait
+rsync -rvhz${FIX} --delete -e "ssh -o ControlPath=$CTL_PATH" \
+"${SRC_USER}@${SRC_HOST}:/${SRC_BASE}/" "${DST_BASE}/" >> "$LOG" 2>&1
 
 # Close the master connection
 ssh -S $CTL_PATH -O exit ${SRC_USER}@${SRC_HOST} 2>>"$LOG"
 
-echo "Copy ended at: $(date)" >> "$LOG"
+echo "Check ended at: $(date)" >> "$LOG"
